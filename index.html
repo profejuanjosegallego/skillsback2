@@ -105,12 +105,12 @@ description: "Genera PrecargaDatos.java con 400 registros por tabla y 50 JSON de
 
 # Precarga y JSON de prueba para una API Spring Boot
 
-El equipo adjunta sus modelos y controladores. Tú entregas un solo archivo, `archivos-proyecto.zip`, que se descomprime junto a `pom.xml` y trae:
+El equipo adjunta sus modelos y controladores. Tú entregas dos descargas separadas, y el equipo las pone en su proyecto:
 
 1. `PrecargaDatos.java`: 400 registros por tabla al arrancar la API.
-2. `pruebas-json/`: 50 JSON de prueba por tabla y un script que los envía todos.
+2. `pruebas-json.zip`: 50 JSON de prueba por tabla y un script que los envía todos.
 
-El equipo no debe hacer nada a mano fuera de descomprimir y ejecutar los dos comandos.
+El equipo solo descarga, ubica los archivos y ejecuta los dos comandos.
 
 Responde en español. Trabaja solo con lo que adjuntaron: no inventes clases, campos ni rutas.
 
@@ -129,9 +129,9 @@ De los modelos toma:
 
 De los controladores toma la ruta completa de cada POST: `@RequestMapping` de la clase más `@PostMapping`, y la clase que recibe en `@RequestBody`.
 
-Si una relación no tiene setter, la precarga no compila. Agrega los métodos que faltan a una copia de esa clase, sin cambiar nada más, e inclúyela en el `.zip`.
+Si una relación no tiene setter, la precarga no compila. Agrega los métodos que faltan a una copia de esa clase, sin cambiar nada más, y entrégala como archivo aparte.
 
-Si el campo de relación del hijo tiene `@JsonIgnore`, el POST responde bien pero guarda la relación en null, y el script no puede detectarlo. En la copia de esa clase cambia solo esa anotación por `@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)`, con su import, e inclúyela en el `.zip`. Así el POST lee el padre y el GET sigue sin mostrarlo. No toques `@JsonIgnore` en la lista del padre.
+Si el campo de relación del hijo tiene `@JsonIgnore`, el POST responde bien pero guarda la relación en null, y el script no puede detectarlo. En la copia de esa clase cambia solo esa anotación por `@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)`, con su import, y entrégala como archivo aparte. Así el POST lee el padre y el GET sigue sin mostrarlo. No toques `@JsonIgnore` en la lista del padre.
 
 ## 2. Escribe PrecargaDatos.java
 
@@ -349,16 +349,15 @@ console.log('La API aceptó todos los JSON. Para repetir la prueba, reinicien la
 
 ## 4. Empaqueta y comprueba
 
-Entrega un solo archivo, `archivos-proyecto.zip`, con esta estructura:
+Comprime en `pruebas-json.zip` estos archivos, sin carpeta interna:
 
 ```
-src/main/java/RUTA_DEL_PAQUETE/config/PrecargaDatos.java
-pruebas-json/probar.mjs
-pruebas-json/plan.json
-pruebas-json/empresas.json (y uno por cada tabla)
+probar.mjs
+plan.json
+empresas.json (y uno por cada tabla)
 ```
 
-Si corregiste una clase, inclúyela completa en su misma ruta dentro de `src/main/java`.
+`PrecargaDatos.java` y las clases corregidas no van en el `.zip`: entrégalos sueltos.
 
 Antes de entregar, confirma con un script que:
 
@@ -368,24 +367,28 @@ Antes de entregar, confirma con un script que:
 
 ## 5. Entrega
 
-Adjunta el `.zip` y responde solo esto:
+Entrega `PrecargaDatos.java`, `pruebas-json.zip` y las clases corregidas como archivos descargables, y responde solo esto:
 
-1. **Qué hacer**: descompriman `archivos-proyecto.zip` en la carpeta que contiene `pom.xml`, inicien la API con `mvnw spring-boot:run` y, en otra terminal, ejecuten `node pruebas-json/probar.mjs`.
+1. **Qué hacer**:
+   - Descarguen `PrecargaDatos.java` y pónganlo en `src/main/java/RUTA_DEL_PAQUETE/config/`, con la ruta real del proyecto. Si la carpeta `config` no existe, créenla.
+   - Si hay clases corregidas, reemplacen las que tienen. Indica la ruta de cada una.
+   - Descompriman `pruebas-json.zip` en una carpeta llamada `pruebas-json`, junto a `pom.xml`.
+   - Inicien la API con `mvnw spring-boot:run` y, en otra terminal, en la carpeta de `pom.xml`, ejecuten `node pruebas-json/probar.mjs`.
 2. **Qué deben ver**: `Precarga lista` en la consola de la API y el total de JSON guardados en la otra terminal.
 3. **Avisos**: solo si aplican.
-   - Si corregiste una clase, di cuál y qué cambiaste. Al descomprimir, reemplaza la que tienen.
+   - Si corregiste una clase, di cuál y qué cambiaste.
    - Si un modelo no tiene POST en los controladores, déjalo fuera de `plan.json` y dilo. Si otra tabla depende de sus ids, añádelo al plan con `"soloLeer": true`.
 
-No pidas al equipo editar archivos, reemplazar ids ni enviar peticiones a mano.
+No pidas al equipo editar el contenido de los archivos, reemplazar ids ni enviar peticiones a mano.
 
-Si algo falla, pide el error o `resultado.txt` y la clase que mencionan. Corrige y vuelve a entregar el `.zip` completo.
+Si algo falla, pide el error o `resultado.txt` y la clase que mencionan. Corrige y vuelve a entregar el archivo completo.
 
 No digas que ejecutaste la API: corre en el computador del equipo y tú no puedes alcanzar su localhost.
 </script>
 <script>
 const SKILL = document.getElementById('skill-md').textContent.trim() + '\n';
 const NOMBRE = 'precargar-api';
-const MENSAJE = `Usa el skill ${NOMBRE}. Adjunto mis modelos y controladores. Entrégame archivos-proyecto.zip.`;
+const MENSAJE = `Usa el skill ${NOMBRE}. Adjunto mis modelos y controladores. Entrégame PrecargaDatos.java y pruebas-json.zip.`;
 
 // ---------------------------- ZIP sin compresión -------------------------------
 const TABLA_CRC = Uint32Array.from({ length: 256 }, (_, n) => {
@@ -445,7 +448,7 @@ const PASOS = [
         <li>Lee sus modelos y controladores, sin inventar clases ni campos.</li>
         <li>Escribe <code>PrecargaDatos.java</code> con 400 registros por tabla.</li>
         <li>Crea 50 JSON de prueba por tabla y un script que los envía a su API.</li>
-        <li>Empaqueta todo en un solo archivo. Ustedes no editan nada a mano.</li>
+        <li>Les entrega los archivos para que los descarguen y los pongan en su proyecto.</li>
       </ul>
       <div class="visor">
         <p class="visor-tit">${NOMBRE}/SKILL.md</p>
@@ -474,12 +477,14 @@ const PASOS = [
     titulo: 'Recibir los archivos',
     cuerpo: () => `<div class="entregas">
         <div class="entrega"><strong>PrecargaDatos.java</strong><p>Crea 400 registros por tabla, unidos con sus relaciones, al arrancar la API.</p></div>
-        <div class="entrega"><strong>pruebas-json</strong><p>Trae 50 JSON de prueba por tabla y el script que los envía.</p></div>
+        <div class="entrega"><strong>pruebas-json.zip</strong><p>Trae 50 JSON de prueba por tabla y el script que los envía.</p></div>
       </div>
       <ol class="lista">
-        <li>Descarguen <code>archivos-proyecto.zip</code> y descomprímanlo en la carpeta que contiene <code>pom.xml</code>.</li>
+        <li>Descarguen <code>PrecargaDatos.java</code> y pónganlo en la carpeta <code>config</code> que Claude les indique. Si no existe, créenla.</li>
+        <li>Si Claude corrigió alguna clase, descárguenla y reemplacen la que tienen.</li>
+        <li>Descarguen <code>pruebas-json.zip</code> y descomprímanlo en una carpeta llamada <code>pruebas-json</code>, junto a <code>pom.xml</code>.</li>
         <li>Inicien la API con <code>mvnw spring-boot:run</code>. En la consola debe aparecer <code>Precarga lista</code>.</li>
-        <li>En otra terminal, en esa misma carpeta, ejecuten <code>node pruebas-json/probar.mjs</code>. El script toma ids reales de su API y envía todos los JSON.</li>
+        <li>En otra terminal, en la carpeta que contiene <code>pom.xml</code>, ejecuten <code>node pruebas-json/probar.mjs</code>. El script toma ids reales de su API y envía todos los JSON.</li>
       </ol>
       <p class="ayuda">Al final verán cuántos JSON se guardaron. Si algo falla, peguen el error o <code>pruebas-json/resultado.txt</code> en el mismo chat de Claude.</p>`,
   },
