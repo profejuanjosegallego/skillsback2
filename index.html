@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Taller de skills para APIs</title>
+<meta name="description" content="Paso a paso para obtener la precarga de 400 registros y 50 JSON de prueba de una API Spring Boot con un skill de Claude.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --fondo: #eef1f3; --panel: #ffffff; --panel-2: #f6f8f9; --tinta: #17232e; --tenue: #566673; --borde: #cfd8de;
+  --acento: #0b5f7a; --acento-tinta: #ffffff; --codigo-fondo: #14212b; --codigo-tinta: #dbe6ec;
+  --ok: #17693f; --ok-fondo: #e3f2e9;
+  --cuerpo: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fondo: #101820; --panel: #18242e; --panel-2: #1f2d38; --tinta: #e6eef2; --tenue: #9fb0bb; --borde: #34454f;
+    --acento: #5fbcd8; --acento-tinta: #0b1a22; --codigo-fondo: #0c141a; --codigo-tinta: #d6e2e8;
+    --ok: #7bd3a0; --ok-fondo: #173526;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--fondo); color: var(--tinta); font: 400 16px/1.55 var(--cuerpo); }
+h1, h2, h3 { line-height: 1.2; text-wrap: balance; margin: 0; }
+code { font-family: var(--mono); font-size: .9em; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+
+.barra { background: var(--panel); border-bottom: 1px solid var(--borde); }
+.barra-int { max-width: 860px; margin: auto; padding: 14px 24px 6px; }
+h1 { font-size: 1.25rem; font-weight: 700; }
+.lema { margin: 2px 0 0; color: var(--tenue); font-size: .9rem; }
+#pasos { list-style: none; margin: 0 auto; padding: 0 24px; display: flex; gap: 2px; max-width: 860px; overflow-x: auto; }
+#pasos button { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 0; border-bottom: 3px solid transparent; background: none; cursor: pointer; color: var(--tenue); white-space: nowrap; font-weight: 500; font-size: .92rem; }
+#pasos button:hover { color: var(--tinta); }
+#pasos button[aria-current] { color: var(--tinta); border-bottom-color: var(--acento); }
+.num { display: inline-grid; place-items: center; width: 24px; height: 24px; font: 600 .78rem var(--mono); border: 1.5px solid var(--borde); border-radius: 3px; background: var(--panel); }
+
+main { max-width: 860px; margin: auto; padding: 20px 24px 48px; }
+#paso { background: var(--panel); border: 1px solid var(--borde); border-radius: 6px; padding: 24px; display: flex; flex-direction: column; gap: 18px; outline: none; }
+.enc-paso .contador { margin: 0 0 4px; font: 500 .78rem var(--mono); color: var(--tenue); }
+.enc-paso h2 { font-size: 1.5rem; }
+.lista { margin: 0; padding-left: 22px; }
+.lista li + li { margin-top: 8px; }
+.ayuda { margin: 0; color: var(--tenue); font-size: .88rem; }
+a { color: var(--acento); }
+
+button.pri, button.sec { border-radius: 4px; cursor: pointer; }
+button.pri { background: var(--acento); color: var(--acento-tinta); border: 1px solid var(--acento); padding: 9px 16px; font-weight: 600; }
+button.sec { background: var(--panel); border: 1px solid var(--borde); padding: 6px 12px; font-size: .9rem; font-weight: 500; }
+button.sec:hover { border-color: var(--acento); color: var(--acento); }
+.nav-paso { display: flex; justify-content: space-between; gap: 12px; padding-top: 16px; border-top: 1px solid var(--borde); flex-wrap: wrap; }
+.solo-derecha { margin-left: auto; }
+
+.mensaje { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--borde); border-left: 4px solid var(--acento); border-radius: 4px; background: var(--panel-2); }
+.mensaje p { margin: 0; }
+.entregas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.entrega { padding: 12px 14px; border: 1px solid var(--ok); border-radius: 4px; background: var(--ok-fondo); }
+.entrega strong { font-family: var(--mono); font-size: .9rem; overflow-wrap: anywhere; }
+.entrega p { margin: 4px 0 0; font-size: .92rem; }
+
+.texto { margin: 0; max-width: 68ch; }
+#paso h3 { font-size: 1.05rem; }
+.visor { border: 1px solid var(--borde); border-radius: 4px; overflow: hidden; }
+.visor-tit { margin: 0; padding: 8px 12px; font: 500 .8rem var(--mono); color: var(--tenue); background: var(--panel-2); border-bottom: 1px solid var(--borde); }
+.visor pre { margin: 0; max-height: 420px; overflow: auto; padding: 14px; background: var(--codigo-fondo); color: var(--codigo-tinta); font: 400 .8rem/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.diagrama { margin: 0; background: var(--panel-2); border: 1px solid var(--borde); border-radius: 4px; padding: 12px; }
+.diagrama svg { display: block; width: 100%; max-width: 620px; height: auto; margin: auto; }
+.diagrama figcaption { font-size: .84rem; color: var(--tenue); margin-top: 6px; }
+.caja { fill: var(--panel); stroke: var(--acento); stroke-width: 1.5; }
+.nombre-caja { fill: var(--tinta); font: 600 14px var(--cuerpo); }
+.linea { fill: none; stroke: var(--acento); stroke-width: 1.6; }
+.card { fill: var(--tenue); font: 600 11px var(--mono); }
+
+@media (max-width: 640px) {
+  .barra-int, main { padding-inline: 16px; }
+  #pasos { padding-inline: 8px; }
+  #paso { padding: 16px; }
+  .entregas { grid-template-columns: minmax(0, 1fr); }
+}
+</style>
+</head>
+<body>
+<header class="barra">
+  <div class="barra-int">
+    <h1>Taller de skills para APIs</h1>
+    <p class="lema">Lleven sus modelos y controladores a Claude y reciban la precarga y los JSON de prueba.</p>
+  </div>
+  <nav aria-label="Pasos"><ol id="pasos"></ol></nav>
+</header>
+<main>
+  <section id="paso" tabindex="-1" aria-live="polite"></section>
+</main>
+<script type="text/plain" id="skill-md">
+---
+name: precargar-api
+description: "Genera PrecargaDatos.java con 400 registros por tabla y 50 JSON de prueba por tabla a partir de los modelos y controladores de un proyecto Spring Boot. Úsala cuando el equipo adjunte sus modelos y controladores, pida precargar datos, llenar las tablas o crear JSON de prueba."
+---
+
+# Precarga y JSON de prueba para una API Spring Boot
+
+El equipo adjunta sus modelos y controladores. Tú entregas dos cosas:
+
+1. `PrecargaDatos.java`: 400 registros por tabla al arrancar la API.
+2. `pruebas-json.zip`: un archivo por tabla con 50 objetos JSON para usar en POST.
+
+Responde en español. Trabaja solo con lo que adjuntaron: no inventes clases, campos ni rutas.
+
+## 1. Lee los archivos
+
+Si faltan los modelos o los controladores, pídelos y espera. No pidas repositorios ni servicios: la precarga no los necesita.
+
+De los modelos toma:
+
+- El paquete base y si usan `jakarta.persistence` o `javax.persistence`.
+- Las clases con `@Entity`, sus campos y tipos.
+- Las restricciones: `length`, `nullable`, `unique`, `@NotNull`, `@NotBlank`, `@Size`, `@Email`, `@Pattern`, `@Min`, `@Max`.
+- Las relaciones y qué clase tiene la llave foránea (`@ManyToOne` o el lado dueño de `@OneToOne`).
+- Cómo se genera el id. Si no se genera, la precarga debe asignarlo.
+- Los `enum` y los setters. Con Lombok, `@Data` o `@Setter` cuentan como setters.
+
+De los controladores toma la ruta completa de cada POST: `@RequestMapping` de la clase más `@PostMapping`, y la clase que recibe en `@RequestBody`.
+
+Si una relación no tiene setter, la precarga no compila. Entrega los métodos que faltan e indica en qué clase pegarlos.
+
+## 2. Escribe PrecargaDatos.java
+
+Sigue esta plantilla y adáptala a las clases reales del equipo. Va en `PAQUETE_BASE.config`.
+
+```java
+package PAQUETE_BASE.config;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+
+import PAQUETE_BASE.models.Empresa;
+import PAQUETE_BASE.models.Reto;
+
+// Spring ejecuta esta clase al arrancar la API, después de crear las tablas.
+// Crea primero los padres, porque cada hijo necesita a su padre.
+@Component
+public class PrecargaDatos implements CommandLineRunner {
+
+    private static final int TOTAL = 400;
+    private static final String[] SECTORES = { "Tecnología", "Salud", "Educación", "Comercio" };
+
+    // La semilla fija hace que todo el equipo obtenga los mismos datos.
+    private final Random azar = new Random(2026);
+
+    @PersistenceContext
+    private EntityManager bd;
+
+    @Override
+    @Transactional
+    public void run(String... args) {
+        if (contar(Empresa.class) > 0) {
+            System.out.println("Precarga omitida: la base ya tiene datos.");
+            return;
+        }
+
+        List<Empresa> empresas = crearEmpresas();
+        crearRetos(empresas);
+
+        System.out.println("Precarga lista: " + contar(Empresa.class) + " empresas, " + contar(Reto.class) + " retos.");
+    }
+
+    private List<Empresa> crearEmpresas() {
+        List<Empresa> filas = new ArrayList<>();
+        for (int i = 1; i <= TOTAL; i++) {
+            Empresa fila = new Empresa();
+            fila.setNombre("Empresa " + i);
+            fila.setSector(elegir(SECTORES));
+            bd.persist(fila);
+            filas.add(fila);
+        }
+        return filas;
+    }
+
+    private void crearRetos(List<Empresa> empresas) {
+        for (int i = 1; i <= TOTAL; i++) {
+            Reto fila = new Reto();
+            fila.setNombre("Reto " + i);
+            fila.setEmpresa(empresas.get(azar.nextInt(empresas.size())));
+            bd.persist(fila);
+        }
+    }
+
+    private long contar(Class<?> entidad) {
+        return bd.createQuery("select count(e) from " + entidad.getSimpleName() + " e", Long.class).getSingleResult();
+    }
+
+    private String elegir(String[] opciones) {
+        return opciones[azar.nextInt(opciones.length)];
+    }
+}
+```
+
+Reglas:
+
+- Usa `EntityManager` como en la plantilla. Con `javax.persistence` en los modelos, cambia los imports de `jakarta` a `javax`.
+- Crea los padres antes que los hijos, y un método `crear` por entidad.
+- Llena todos los campos, también los opcionales, y todas las llaves foráneas.
+- Usa textos realistas en español, con datos de empresas y personas de Colombia.
+- Respeta cada restricción. Recorta los textos al `length` de la columna.
+- En los campos únicos incluye el número `i`, sin pasarte del `length`.
+- Las fechas deben tener sentido: el fin va después del inicio, y un hijo no empieza antes que su padre.
+- En relaciones muchos a muchos, llena la lista desde el lado dueño.
+- Si `@Entity` trae un nombre propio, úsalo en la consulta de `contar`.
+
+## 3. Crea los JSON de prueba
+
+Crea un archivo por tabla, por ejemplo `empresas.json`, con un arreglo de 50 objetos. Comprímelos en `pruebas-json.zip`.
+
+- Usa los mismos nombres de campo que el modelo y que `@JsonProperty`, si existe.
+- No incluyas el id de la tabla cuando se genera solo.
+- Los 50 objetos deben ser válidos y cumplir las restricciones.
+- En los campos únicos, usa valores que no choquen con la precarga ni entre sí. Por ejemplo, comienza con `PRB-`.
+- Escribe las fechas como las lee Jackson: `2026-03-15` para `LocalDate` y `2026-03-15T08:30:00` para `LocalDateTime`.
+- Escribe cada padre así: `"empresa": { "id": 12 }`.
+- Si el id del padre es numérico y autoincremental, usa valores entre 1 y 400.
+- Si es UUID, escribe `"ID_DE_EMPRESA"`. El equipo lo reemplaza por un id real del GET.
+
+Antes de entregar, confirma con un script que hay 50 objetos en cada archivo y que el JSON es válido.
+
+## 4. Entrega
+
+Adjunta los dos archivos y responde solo esto:
+
+1. **Dónde va**: ruta de `PrecargaDatos.java` dentro de `src/main/java`.
+2. **Antes de arrancar**: setters que falten, si hay alguno.
+3. **Cómo comprobarlo**: inicien con `mvnw spring-boot:run` y busquen `Precarga lista` en la consola.
+4. **Cómo usar los JSON**: una tabla con la ruta del POST y su archivo. Se envía un objeto por petición, no el arreglo completo. Primero las tablas padre y luego las hijas.
+5. **Avisos**:
+   - Si un campo de relación del hijo tiene `@JsonIgnore`, avisa que el POST guarda esa relación en null.
+   - Si un modelo no tiene POST en los controladores, avisa que sus JSON no tienen ruta.
+   - Si hay ids UUID, avisa que deben reemplazar `ID_DE_...`.
+
+Si no compila o falla al arrancar, pide el error y la clase que menciona. Corrige la precarga y vuelve a entregarla completa.
+
+No digas que ejecutaste la API: corre en el computador del equipo y tú no puedes alcanzar su localhost.
+</script>
+<script>
+const SKILL = document.getElementById('skill-md').textContent.trim() + '\n';
+const NOMBRE = 'precargar-api';
+const MENSAJE = `Usa el skill ${NOMBRE}. Adjunto mis modelos y controladores. Entrégame PrecargaDatos.java y los JSON de prueba.`;
+
+// ---------------------------- ZIP sin compresión -------------------------------
+const TABLA_CRC = Uint32Array.from({ length: 256 }, (_, n) => {
+  let v = n;
+  for (let k = 0; k < 8; k++) v = v & 1 ? 0xedb88320 ^ (v >>> 1) : v >>> 1;
+  return v >>> 0;
+});
+function crc32(bytes) {
+  let v = 0xffffffff;
+  for (const b of bytes) v = TABLA_CRC[(v ^ b) & 0xff] ^ (v >>> 8);
+  return (v ^ 0xffffffff) >>> 0;
+}
+function crearZip(ruta, contenido) {
+  const cod = new TextEncoder();
+  const u16 = (n) => [n & 255, (n >>> 8) & 255];
+  const u32 = (n) => [n & 255, (n >>> 8) & 255, (n >>> 16) & 255, (n >>> 24) & 255];
+  const ahora = new Date();
+  const hora = (ahora.getHours() << 11) | (ahora.getMinutes() << 5) | (ahora.getSeconds() >> 1);
+  const fecha = ((ahora.getFullYear() - 1980) << 9) | ((ahora.getMonth() + 1) << 5) | ahora.getDate();
+  const nombre = cod.encode(ruta);
+  const datos = cod.encode(contenido);
+  const comun = [...u16(20), ...u16(0x0800), ...u16(0), ...u16(hora), ...u16(fecha), ...u32(crc32(datos)), ...u32(datos.length), ...u32(datos.length), ...u16(nombre.length), ...u16(0)];
+  const local = Uint8Array.from([...u32(0x04034b50), ...comun]);
+  const central = Uint8Array.from([...u32(0x02014b50), ...u16(20), ...comun, ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(0)]);
+  const tamCentral = central.length + nombre.length;
+  const posicion = local.length + nombre.length + datos.length;
+  const fin = Uint8Array.from([...u32(0x06054b50), ...u16(0), ...u16(0), ...u16(1), ...u16(1), ...u32(tamCentral), ...u32(posicion), ...u16(0)]);
+  return new Blob([local, nombre, datos, central, nombre, fin], { type: 'application/zip' });
+}
+
+// ------------------------------- Diagrama --------------------------------------
+function diagrama() {
+  const cajas = { Empresa: [20, 16], Categoria: [240, 16], Prioridad: [460, 16], Reto: [240, 136], Registro: [240, 256] };
+  const ancho = 160, alto = 48;
+  const relaciones = [['Empresa', 'Reto'], ['Categoria', 'Reto'], ['Prioridad', 'Reto'], ['Reto', 'Registro']];
+  const lineas = relaciones.map(([padre, hijo]) => {
+    const [px, py] = cajas[padre], [hx, hy] = cajas[hijo];
+    const x1 = px + ancho / 2, y1 = py + alto, y2 = hy;
+    // Cada relación llega a un punto distinto del hijo para que no se encimen.
+    const x2 = hx + ancho / 2 + Math.sign(x1 - (hx + ancho / 2)) * 50;
+    return `<path class="linea" d="M${x1} ${y1} C${x1} ${y1 + 36}, ${x2} ${y2 - 36}, ${x2} ${y2}"/>
+      <text class="card" x="${x1 + (x1 < x2 ? 10 : x1 > x2 ? -10 : 8)}" y="${y1 + 15}" text-anchor="middle">1</text>
+      <text class="card" x="${x2 + (x1 < x2 ? -12 : x1 > x2 ? 12 : 8)}" y="${y2 - 6}" text-anchor="middle">N</text>`;
+  }).join('');
+  const nodos = Object.entries(cajas).map(([nombre, [x, y]]) => `<rect class="caja" x="${x}" y="${y}" width="${ancho}" height="${alto}" rx="4"/>
+      <text class="nombre-caja" x="${x + ancho / 2}" y="${y + 29}" text-anchor="middle">${nombre}</text>`).join('');
+  return `<figure class="diagrama"><svg viewBox="0 0 640 320" role="img" aria-label="Diagrama de relaciones: Empresa, Categoría y Prioridad tienen muchos Retos; Reto tiene muchos Registros.">${lineas}${nodos}</svg>
+    <figcaption>Claude lee estas relaciones en sus modelos. Por eso crea primero los padres y después los hijos.</figcaption></figure>`;
+}
+
+// --------------------------------- Pasos ---------------------------------------
+const PASOS = [
+  {
+    titulo: 'Leer e instalar el skill',
+    cuerpo: () => `<p class="texto">Un skill es un archivo de instrucciones para Claude. Antes de instalarlo, lean qué le pide hacer.</p>
+      <ul class="lista">
+        <li>Lee sus modelos y controladores, sin inventar clases ni campos.</li>
+        <li>Escribe <code>PrecargaDatos.java</code> con 400 registros por tabla.</li>
+        <li>Crea 50 JSON de prueba por tabla para sus POST.</li>
+        <li>No ejecuta su API: eso lo hacen ustedes en su computador.</li>
+      </ul>
+      <div class="visor">
+        <p class="visor-tit">${NOMBRE}/SKILL.md</p>
+        <pre tabindex="0" aria-label="Contenido completo del skill"><code id="ver-skill"></code></pre>
+      </div>
+      <h3>Cuando lo hayan leído</h3>
+      <ol class="lista">
+        <li><button type="button" class="pri" id="bajar">Descargar ${NOMBRE}.zip</button></li>
+        <li>En <a href="https://claude.ai" target="_blank" rel="noopener">claude.ai</a>, activen la creación de archivos en Settings &gt; Capabilities.</li>
+        <li>Vayan a Customize &gt; Skills, toquen <strong>+</strong> y elijan <strong>Upload a skill</strong>.</li>
+        <li>Suban <code>${NOMBRE}.zip</code> sin descomprimirlo.</li>
+      </ol>`,
+  },
+  {
+    titulo: 'Llevar su código',
+    cuerpo: () => `<ol class="lista">
+        <li>Abran un chat nuevo en Claude.</li>
+        <li>Adjunten todos los <code>.java</code> de sus carpetas de modelos y controladores.</li>
+        <li>Envíen este mensaje:</li>
+      </ol>
+      <div class="mensaje"><p>${MENSAJE}</p><button type="button" class="sec" id="copiar">Copiar mensaje</button></div>
+      ${diagrama()}`,
+  },
+  {
+    titulo: 'Recibir los archivos',
+    cuerpo: () => `<div class="entregas">
+        <div class="entrega"><strong>PrecargaDatos.java</strong><p>Crea 400 registros por tabla al arrancar la API.</p></div>
+        <div class="entrega"><strong>pruebas-json.zip</strong><p>Trae 50 JSON de prueba por tabla para usar en sus POST.</p></div>
+      </div>
+      <ol class="lista">
+        <li>Pongan <code>PrecargaDatos.java</code> en la carpeta que Claude les indique.</li>
+        <li>Inicien la API con <code>mvnw spring-boot:run</code>. En la consola debe aparecer <code>Precarga lista</code>.</li>
+        <li>Prueben sus POST con los JSON: un objeto por petición, en el orden que Claude les indique.</li>
+      </ol>
+      <p class="ayuda">Si algo falla, peguen el error en el mismo chat de Claude.</p>`,
+  },
+];
+let actual = 0;
+const encabezado = (i) => `<header class="enc-paso"><p class="contador">Paso ${i + 1} de ${PASOS.length}</p><h2>${PASOS[i].titulo}</h2></header>`;
+
+function dibujar() {
+  document.getElementById('pasos').innerHTML = PASOS.map((p, i) => `<li><button type="button" data-ir="${i}" ${i === actual ? 'aria-current="step"' : ''}><span class="num">${i + 1}</span>${p.titulo}</button></li>`).join('');
+  document.getElementById('paso').innerHTML = `${encabezado(actual)}${PASOS[actual].cuerpo()}
+    <nav class="nav-paso" aria-label="Moverse entre pasos">
+      ${actual > 0 ? `<button type="button" class="sec" data-ir="${actual - 1}">Anterior</button>` : ''}
+      ${actual < PASOS.length - 1 ? `<button type="button" class="pri solo-derecha" data-ir="${actual + 1}">Siguiente: ${PASOS[actual + 1].titulo}</button>` : ''}
+    </nav>`;
+  const visor = document.getElementById('ver-skill');
+  if (visor) visor.textContent = SKILL;
+}
+
+async function copiar(boton) {
+  const original = boton.textContent;
+  try {
+    await navigator.clipboard.writeText(MENSAJE);
+    boton.textContent = 'Copiado';
+  } catch {
+    boton.textContent = 'No se pudo copiar';
+  }
+  setTimeout(() => { boton.textContent = original; }, 1600);
+}
+
+function descargar() {
+  const url = URL.createObjectURL(crearZip(`${NOMBRE}/SKILL.md`, SKILL));
+  const a = Object.assign(document.createElement('a'), { href: url, download: `${NOMBRE}.zip` });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  if (b.dataset.ir !== undefined) {
+    actual = Number(b.dataset.ir);
+    dibujar();
+    document.getElementById('paso').focus({ preventScroll: true });
+    window.scrollTo(0, 0);
+  } else if (b.id === 'bajar') descargar();
+  else if (b.id === 'copiar') copiar(b);
+});
+
+dibujar();
+</script>
+</body>
+</html>
