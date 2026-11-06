@@ -105,10 +105,12 @@ description: "Genera PrecargaDatos.java con 400 registros por tabla y 50 JSON de
 
 # Precarga y JSON de prueba para una API Spring Boot
 
-El equipo adjunta sus modelos y controladores. Tú entregas dos cosas:
+El equipo adjunta sus modelos y controladores. Tú entregas un solo archivo, `archivos-proyecto.zip`, que se descomprime junto a `pom.xml` y trae:
 
 1. `PrecargaDatos.java`: 400 registros por tabla al arrancar la API.
-2. `pruebas-json.zip`: un archivo por tabla con 50 objetos JSON para usar en POST.
+2. `pruebas-json/`: 50 JSON de prueba por tabla y un script que los envía todos.
+
+El equipo no debe hacer nada a mano fuera de descomprimir y ejecutar los dos comandos.
 
 Responde en español. Trabaja solo con lo que adjuntaron: no inventes clases, campos ni rutas.
 
@@ -127,7 +129,9 @@ De los modelos toma:
 
 De los controladores toma la ruta completa de cada POST: `@RequestMapping` de la clase más `@PostMapping`, y la clase que recibe en `@RequestBody`.
 
-Si una relación no tiene setter, la precarga no compila. Entrega los métodos que faltan e indica en qué clase pegarlos.
+Si una relación no tiene setter, la precarga no compila. Agrega los métodos que faltan a una copia de esa clase, sin cambiar nada más, e inclúyela en el `.zip`.
+
+Si el campo de relación del hijo tiene `@JsonIgnore`, el POST responde bien pero guarda la relación en null, y el script no puede detectarlo. En la copia de esa clase cambia solo esa anotación por `@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)`, con su import, e inclúyela en el `.zip`. Así el POST lee el padre y el GET sigue sin mostrarlo. No toques `@JsonIgnore` en la lista del padre.
 
 ## 2. Escribe PrecargaDatos.java
 
@@ -223,40 +227,165 @@ Reglas:
 
 ## 3. Crea los JSON de prueba
 
-Crea un archivo por tabla, por ejemplo `empresas.json`, con un arreglo de 50 objetos. Comprímelos en `pruebas-json.zip`.
+Crea un archivo por tabla, por ejemplo `empresas.json`, con un arreglo de 50 objetos.
 
 - Usa los mismos nombres de campo que el modelo y que `@JsonProperty`, si existe.
 - No incluyas el id de la tabla cuando se genera solo.
 - Los 50 objetos deben ser válidos y cumplir las restricciones.
 - En los campos únicos, usa valores que no choquen con la precarga ni entre sí. Por ejemplo, comienza con `PRB-`.
 - Escribe las fechas como las lee Jackson: `2026-03-15` para `LocalDate` y `2026-03-15T08:30:00` para `LocalDateTime`.
-- Escribe cada padre así: `"empresa": { "id": 12 }`.
-- Si el id del padre es numérico y autoincremental, usa valores entre 1 y 400.
-- Si es UUID, escribe `"ID_DE_EMPRESA"`. El equipo lo reemplaza por un id real del GET.
+- Escribe cada padre con el nombre de su archivo entre llaves dobles, sin ids reales: `"empresa": { "id": "{{empresas}}" }`. El script lo reemplaza por un id real de la API.
 
-Antes de entregar, confirma con un script que hay 50 objetos en cada archivo y que el JSON es válido.
+Crea también `plan.json`, con las tablas de padres a hijos:
 
-## 4. Entrega
+```json
+{
+  "url": "http://localhost:8080",
+  "tablas": [
+    { "nombre": "empresas", "ruta": "/api/empresas" },
+    { "nombre": "retos", "ruta": "/api/retos" }
+  ]
+}
+```
 
-Adjunta los dos archivos y responde solo esto:
+Si un `application.properties` adjunto trae otro `server.port`, usa ese puerto en `url`.
 
-1. **Dónde va**: ruta de `PrecargaDatos.java` dentro de `src/main/java`.
-2. **Antes de arrancar**: setters que falten, si hay alguno.
-3. **Cómo comprobarlo**: inicien con `mvnw spring-boot:run` y busquen `Precarga lista` en la consola.
-4. **Cómo usar los JSON**: una tabla con la ruta del POST y su archivo. Se envía un objeto por petición, no el arreglo completo. Primero las tablas padre y luego las hijas.
-5. **Avisos**:
-   - Si un campo de relación del hijo tiene `@JsonIgnore`, avisa que el POST guarda esa relación en null.
-   - Si un modelo no tiene POST en los controladores, avisa que sus JSON no tienen ruta.
-   - Si hay ids UUID, avisa que deben reemplazar `ID_DE_...`.
+Copia este script sin cambios en `probar.mjs`:
 
-Si no compila o falla al arrancar, pide el error y la clase que menciona. Corrige la precarga y vuelve a entregarla completa.
+```js
+#!/usr/bin/env node
+// Envía todos los JSON de prueba a la API. Solo necesita Node 18 o superior.
+// Uso, desde la carpeta que contiene pom.xml: node pruebas-json/probar.mjs
+import { readFile, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const carpeta = dirname(fileURLToPath(import.meta.url));
+const leerJson = async (nombre) => JSON.parse(await readFile(join(carpeta, nombre), 'utf8'));
+const plan = await leerJson('plan.json');
+const url = (process.argv[2] ?? plan.url).replace(/\/$/, '');
+const ids = {};
+const problemas = [];
+
+async function pedir(metodo, ruta, cuerpo) {
+  const r = await fetch(url + ruta, {
+    method: metodo,
+    headers: cuerpo ? { 'Content-Type': 'application/json' } : undefined,
+    body: cuerpo ? JSON.stringify(cuerpo) : undefined,
+  });
+  const texto = await r.text();
+  let datos = texto;
+  try { datos = JSON.parse(texto); } catch { /* la respuesta no es JSON */ }
+  return { status: r.status, datos };
+}
+
+// Toma los ids reales que tiene la API en este momento.
+async function leerIds(tabla) {
+  const { datos } = await pedir('GET', tabla.ruta);
+  const filas = Array.isArray(datos) ? datos : datos?.content ?? [];
+  return filas.map((f) => f.id).filter((id) => id !== undefined);
+}
+
+// Cambia cada {{tabla}} por un id real de esa tabla.
+function completar(valor) {
+  if (Array.isArray(valor)) return valor.map(completar);
+  if (valor && typeof valor === 'object') return Object.fromEntries(Object.entries(valor).map(([k, v]) => [k, completar(v)]));
+  const padre = typeof valor === 'string' ? valor.match(/^\{\{(.+)\}\}$/)?.[1] : null;
+  if (!padre) return valor;
+  const opciones = ids[padre] ?? [];
+  if (!opciones.length) throw new Error(`No hay ids de ${padre}.`);
+  return opciones[Math.floor(Math.random() * opciones.length)];
+}
+
+const relaciones = (cuerpo) => Object.keys(cuerpo).filter((k) => cuerpo[k]?.id !== undefined);
+
+try {
+  await pedir('GET', plan.tablas[0].ruta);
+} catch {
+  console.error(`No hay respuesta en ${url}. Inicien la API con mvnw spring-boot:run y vuelvan a intentarlo.`);
+  process.exit(2);
+}
+
+let enviados = 0;
+let guardados = 0;
+for (const tabla of plan.tablas) {
+  ids[tabla.nombre] = await leerIds(tabla);
+  if (tabla.soloLeer) continue;
+  let bien = 0;
+  const objetos = await leerJson(`${tabla.nombre}.json`);
+  for (const [i, objeto] of objetos.entries()) {
+    enviados++;
+    const nombre = `${tabla.nombre} #${i + 1}`;
+    try {
+      const cuerpo = completar(objeto);
+      const r = await pedir('POST', tabla.ruta, cuerpo);
+      if (r.status < 200 || r.status >= 300) {
+        problemas.push(`${nombre}: respondió ${r.status}. ${JSON.stringify(r.datos).slice(0, 300)}`);
+        continue;
+      }
+      const perdidas = relaciones(cuerpo).filter((k) => r.datos && typeof r.datos === 'object' && k in r.datos && r.datos[k] === null);
+      if (perdidas.length) {
+        problemas.push(`${nombre}: se guardó sin ${perdidas.join(', ')}.`);
+        continue;
+      }
+      if (r.datos?.id !== undefined) ids[tabla.nombre].push(r.datos.id);
+      bien++;
+    } catch (error) {
+      problemas.push(`${nombre}: ${error.message}`);
+    }
+  }
+  guardados += bien;
+  console.log(`${tabla.nombre}: ${bien} de ${objetos.length} guardados`);
+}
+
+console.log(`\nTotal: ${guardados} de ${enviados} guardados.`);
+if (problemas.length) {
+  await writeFile(join(carpeta, 'resultado.txt'), `${problemas.join('\n')}\n`);
+  console.log('Peguen pruebas-json/resultado.txt en el chat de Claude.');
+  process.exit(1);
+}
+console.log('La API aceptó todos los JSON. Para repetir la prueba, reinicien la API.');
+```
+
+## 4. Empaqueta y comprueba
+
+Entrega un solo archivo, `archivos-proyecto.zip`, con esta estructura:
+
+```
+src/main/java/RUTA_DEL_PAQUETE/config/PrecargaDatos.java
+pruebas-json/probar.mjs
+pruebas-json/plan.json
+pruebas-json/empresas.json (y uno por cada tabla)
+```
+
+Si corregiste una clase, inclúyela completa en su misma ruta dentro de `src/main/java`.
+
+Antes de entregar, confirma con un script que:
+
+- Cada archivo de tabla es JSON válido y tiene 50 objetos.
+- Cada `{{tabla}}` corresponde a una tabla anterior en `plan.json`.
+- `probar.mjs` quedó idéntico al de este skill.
+
+## 5. Entrega
+
+Adjunta el `.zip` y responde solo esto:
+
+1. **Qué hacer**: descompriman `archivos-proyecto.zip` en la carpeta que contiene `pom.xml`, inicien la API con `mvnw spring-boot:run` y, en otra terminal, ejecuten `node pruebas-json/probar.mjs`.
+2. **Qué deben ver**: `Precarga lista` en la consola de la API y el total de JSON guardados en la otra terminal.
+3. **Avisos**: solo si aplican.
+   - Si corregiste una clase, di cuál y qué cambiaste. Al descomprimir, reemplaza la que tienen.
+   - Si un modelo no tiene POST en los controladores, déjalo fuera de `plan.json` y dilo. Si otra tabla depende de sus ids, añádelo al plan con `"soloLeer": true`.
+
+No pidas al equipo editar archivos, reemplazar ids ni enviar peticiones a mano.
+
+Si algo falla, pide el error o `resultado.txt` y la clase que mencionan. Corrige y vuelve a entregar el `.zip` completo.
 
 No digas que ejecutaste la API: corre en el computador del equipo y tú no puedes alcanzar su localhost.
 </script>
 <script>
 const SKILL = document.getElementById('skill-md').textContent.trim() + '\n';
 const NOMBRE = 'precargar-api';
-const MENSAJE = `Usa el skill ${NOMBRE}. Adjunto mis modelos y controladores. Entrégame PrecargaDatos.java y los JSON de prueba.`;
+const MENSAJE = `Usa el skill ${NOMBRE}. Adjunto mis modelos y controladores. Entrégame archivos-proyecto.zip.`;
 
 // ---------------------------- ZIP sin compresión -------------------------------
 const TABLA_CRC = Uint32Array.from({ length: 256 }, (_, n) => {
@@ -315,14 +444,15 @@ const PASOS = [
       <ul class="lista">
         <li>Lee sus modelos y controladores, sin inventar clases ni campos.</li>
         <li>Escribe <code>PrecargaDatos.java</code> con 400 registros por tabla.</li>
-        <li>Crea 50 JSON de prueba por tabla para sus POST.</li>
-        <li>No ejecuta su API: eso lo hacen ustedes en su computador.</li>
+        <li>Crea 50 JSON de prueba por tabla y un script que los envía a su API.</li>
+        <li>Empaqueta todo en un solo archivo. Ustedes no editan nada a mano.</li>
       </ul>
       <div class="visor">
         <p class="visor-tit">${NOMBRE}/SKILL.md</p>
         <pre tabindex="0" aria-label="Contenido completo del skill"><code id="ver-skill"></code></pre>
       </div>
       <h3>Cuando lo hayan leído</h3>
+      <p class="ayuda">Necesitan JDK 17 o superior y Node 18 o superior.</p>
       <ol class="lista">
         <li><button type="button" class="pri" id="bajar">Descargar ${NOMBRE}.zip</button></li>
         <li>En <a href="https://claude.ai" target="_blank" rel="noopener">claude.ai</a>, activen la creación de archivos en Settings &gt; Capabilities.</li>
@@ -343,15 +473,15 @@ const PASOS = [
   {
     titulo: 'Recibir los archivos',
     cuerpo: () => `<div class="entregas">
-        <div class="entrega"><strong>PrecargaDatos.java</strong><p>Crea 400 registros por tabla al arrancar la API.</p></div>
-        <div class="entrega"><strong>pruebas-json.zip</strong><p>Trae 50 JSON de prueba por tabla para usar en sus POST.</p></div>
+        <div class="entrega"><strong>PrecargaDatos.java</strong><p>Crea 400 registros por tabla, unidos con sus relaciones, al arrancar la API.</p></div>
+        <div class="entrega"><strong>pruebas-json</strong><p>Trae 50 JSON de prueba por tabla y el script que los envía.</p></div>
       </div>
       <ol class="lista">
-        <li>Pongan <code>PrecargaDatos.java</code> en la carpeta que Claude les indique.</li>
+        <li>Descarguen <code>archivos-proyecto.zip</code> y descomprímanlo en la carpeta que contiene <code>pom.xml</code>.</li>
         <li>Inicien la API con <code>mvnw spring-boot:run</code>. En la consola debe aparecer <code>Precarga lista</code>.</li>
-        <li>Prueben sus POST con los JSON: un objeto por petición, en el orden que Claude les indique.</li>
+        <li>En otra terminal, en esa misma carpeta, ejecuten <code>node pruebas-json/probar.mjs</code>. El script toma ids reales de su API y envía todos los JSON.</li>
       </ol>
-      <p class="ayuda">Si algo falla, peguen el error en el mismo chat de Claude.</p>`,
+      <p class="ayuda">Al final verán cuántos JSON se guardaron. Si algo falla, peguen el error o <code>pruebas-json/resultado.txt</code> en el mismo chat de Claude.</p>`,
   },
 ];
 let actual = 0;
